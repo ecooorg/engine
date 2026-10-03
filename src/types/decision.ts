@@ -1,3 +1,5 @@
+decision.ts
+
 export type DoorType = 'ONE_WAY' | 'TWO_WAY';
 
 export type Criticality = 'HIGH' | 'MEDIUM' | 'LOW';
@@ -25,6 +27,8 @@ export interface ScenarioPoint {
   failureCascadeOrPayoff: string;
   /** Optional numeric estimate — only after answers/tools. Always labeled as model estimate. */
   probabilityEstimate?: number;
+  /** Legacy/compat field some models still emit */
+  probability?: number;
 }
 
 export interface OptionScenarios {
