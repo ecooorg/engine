@@ -38,10 +38,12 @@ if (apiKey) {
 
 // Cascade for resilience only — not a substitute for multi-provider critique
 const MODEL_CASCADE = [
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-flash-latest',
+  'gemini-3.5-flash-lite',   // рекомендуют для новых проектов, обычно меньше 503
+  'gemini-3.1-flash-lite',   // запасной «рабочий» Flash-Lite
+  'gemini-3.8-flash',        // основной сильный Flash 3.8
+  'gemini-3.6-flash',        // ещё один стабильный Flash 3.x
+  'gemini-2.5-flash-lite',   // старый, но часто ещё доступен
+  'gemini-2.5-flash',        // последний запасной
 ];
 
 const SYSTEM_RADAR = `Ты — Bifurcation Engine, эпистемически честный аналитик Decision Cockpit.
