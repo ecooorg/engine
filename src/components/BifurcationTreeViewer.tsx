@@ -411,3 +411,4 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
     </div>
   );
 };
+                                 
