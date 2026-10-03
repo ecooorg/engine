@@ -1,5 +1,3 @@
-decision.ts
-
 export type DoorType = 'ONE_WAY' | 'TWO_WAY';
 
 export type Criticality = 'HIGH' | 'MEDIUM' | 'LOW';
