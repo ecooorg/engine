@@ -1,3 +1,5 @@
+BifurcationTreeViewer.tsx
+
 import React, { useState } from 'react';
 import {
   GitFork,
@@ -31,27 +33,52 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
   const [selectedHorizon, setSelectedHorizon] = useState<Horizon>('sixMonths');
   const [activeTabOption, setActiveTabOption] = useState<string>('ALL'); // 'ALL' or option id
 
-  // Dynamic sensitivity calculation
+  /** Read numeric estimate if model provided one; otherwise undefined (no fake %). */
+  const readProb = (point: { probability?: number; probabilityEstimate?: number } | undefined): number | undefined => {
+    if (!point) return undefined;
+    const raw = point.probabilityEstimate ?? point.probability;
+    if (typeof raw !== 'number' || Number.isNaN(raw)) return undefined;
+    return Math.min(100, Math.max(0, raw));
+  };
+
+  const formatProb = (point: { probability?: number; probabilityEstimate?: number; confidenceNote?: string } | undefined): string => {
+    const p = readProb(point);
+    if (p === undefined) return '—';
+    return `~${Math.round(p)}%`;
+  };
+
+  // Dynamic sensitivity: works with or without model probabilities
   const calculateOptionScore = (alt: DecisionAlternative) => {
-    const sc = alt.scenarios[selectedHorizon];
-    if (!sc) return 50;
+    const sc = alt.scenarios?.[selectedHorizon];
 
-    // Adjust probabilities based on pessimismWeight and runwayMonths
-    let bullP = sc.bull.probability;
-    let baseP = sc.base.probability;
-    let bearP = sc.bear.probability;
+    // Base score by door type (epistemically honest when no %)
+    let score = alt.doorType === 'TWO_WAY' ? 68 : 48;
+    if (alt.isSyntheticHybrid) score += 8;
 
-    // Pessimism weight shifts probability from bull to bear
-    const shift = (sliders.pessimismWeight / 100) * 20;
-    bullP = Math.max(5, bullP - shift);
-    bearP = Math.min(85, bearP + shift);
-    baseP = Math.max(10, 100 - bullP - bearP);
+    const bullP = readProb(sc?.bull);
+    const baseP = readProb(sc?.base);
+    const bearP = readProb(sc?.bear);
 
-    // If runway is short and door is ONE_WAY, penalize bear scenario
-    const runwayPenalty = alt.doorType === 'ONE_WAY' && sliders.runwayMonths < 6 ? 15 : 0;
+    if (bullP !== undefined && baseP !== undefined && bearP !== undefined) {
+      const shift = (sliders.pessimismWeight / 100) * 20;
+      const b = Math.max(5, bullP - shift);
+      const r = Math.min(85, bearP + shift);
+      const m = Math.max(10, 100 - b - r);
+      score = b * 1.0 + m * 0.6 + r * 0.1;
+    } else {
+      // Qualitative shift from sliders only
+      score -= (sliders.pessimismWeight / 100) * 18;
+      score += ((sliders.riskTolerance - 5) / 5) * 8;
+    }
 
-    const weightedScore = bullP * 1.0 + baseP * 0.6 + bearP * 0.1 - runwayPenalty;
-    return Math.round(Math.min(100, Math.max(5, weightedScore)));
+    if (alt.doorType === 'ONE_WAY' && sliders.runwayMonths < 6) {
+      score -= 15;
+    } else if (sliders.runwayMonths >= 9) {
+      score += 5;
+    }
+
+    if (Number.isNaN(score)) return 50;
+    return Math.round(Math.min(100, Math.max(5, score)));
   };
 
   const getHorizonLabel = (h: Horizon) => {
@@ -196,7 +223,7 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {alternatives.map((alt) => {
           const score = calculateOptionScore(alt);
-          const sc = alt.scenarios[selectedHorizon];
+          const sc = alt.scenarios?.[selectedHorizon];
           const isSynthetic = alt.isSyntheticHybrid;
 
           return (
@@ -275,7 +302,7 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
                           : 'text-rose-400'
                       }`}
                     >
-                      {score} / 100
+                      {Number.isFinite(score) ? score : 50} / 100
                     </span>
                   </div>
                   <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
@@ -302,7 +329,7 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
                           <TrendingUp className="w-3 h-3" /> Bull Case: {sc.bull.title}
                         </span>
                         <span className="font-mono text-[11px] text-emerald-400/90 font-semibold">
-                          ~{sc.bull.probability}%
+                          {formatProb(sc?.bull)}
                         </span>
                       </div>
                       <p className="text-xs text-slate-300 leading-relaxed mb-1">
@@ -320,7 +347,7 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
                           Base Case: {sc.base.title}
                         </span>
                         <span className="font-mono text-[11px] text-slate-400 font-semibold">
-                          ~{sc.base.probability}%
+                          {formatProb(sc?.base)}
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 leading-relaxed mb-1">
@@ -338,7 +365,7 @@ export const BifurcationTreeViewer: React.FC<BifurcationTreeViewerProps> = ({
                           <AlertTriangle className="w-3 h-3" /> Stress Case: {sc.bear.title}
                         </span>
                         <span className="font-mono text-[11px] text-rose-400/90 font-semibold">
-                          ~{sc.bear.probability}%
+                          {formatProb(sc?.bear)}
                         </span>
                       </div>
                       <p className="text-xs text-slate-300 leading-relaxed mb-1">
